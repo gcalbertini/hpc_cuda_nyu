@@ -66,7 +66,7 @@ void calc_gradient(double* train_x, double* train_y, double* weights, double* co
 
 }
 
-void calc_pred(double* train_x, double* weights, double* batch_size, double* w_gradients, double* b_gradient, long numpredictors, double learning_rate, double* pred){
+void calc_pred(double* train_x, double* weights, long batch_size, double* w_gradients, double b_gradient, long numpredictors, double learning_rate, double* pred){
 
     //calculate the actual prediction using the gradients.
     //Calculate it in mini-batch gradients and then update
