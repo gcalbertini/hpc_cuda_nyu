@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <cuda.h>
 #include <math.h>
-#include <Python.h>
 #include "utils.h"
 
 

@@ -3,10 +3,10 @@ class Adder:
     def __init__(self):
         self.sum = 0
 
-    # Add an element to the Adder
-    def add(self,x):
-        print("adding via python ", x)
-        self.sum += x
+    # Add up 2 element to the Adder
+    def add2(self,x,y):
+        print("x*y adding via python")
+        self.sum += x*y
 
 
     # Print the total sum
