@@ -38,10 +38,10 @@ template <typename T> void shuffleXY(T x, T y, size_t n, size_t k) {
 // Derivative of loss wrt coeff_i = 2(y* - y)*(i*coeffs[i]*predictor_values[i]^(i-1))
 
 float difflinear(long numpredictors, double* coeffs, double* predictor_values, long desired_coeff, double pred, double train_y){
-    if desired_coeff == 0
-        return 2*(pred - train_y)
+    if (desired_coeff == 0)
+        return 2*(pred - train_y);
 
-    return 2*(pred - train_y)*(desired_coeff*coeffs[desired_coeff]*pow(predictor_values[desired_coeff], desired_coeff-1))
+    return 2*(pred - train_y)*(desired_coeff*coeffs[desired_coeff]*pow(predictor_values[desired_coeff], desired_coeff-1));
 
 }
 
