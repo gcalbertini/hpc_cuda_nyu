@@ -15,7 +15,7 @@ template <typename T> void swap(T* a, T* b) {
     *b = temp;
 }
 
-// Shuffle x and y in the same way
+// Shuffle x and y in the same way, x is n * k, y is n
 // SGD requires random selection for mini batches. Random shuffle the whole
 // train data and looping from the start serves the same purpose of random selection
 template <typename T> void shuffleXY(T x, T y, size_t n, size_t k) {
@@ -24,9 +24,9 @@ template <typename T> void shuffleXY(T x, T y, size_t n, size_t k) {
     srand((unsigned)time(NULL));
     for (size_t i = n - 1; i > 0; --i) {
         size_t j = rand() % (i + 1);
-        swap(arr + i, arr + j);
+        swap(y + i, y + j);
         for (size_t kk = 0; kk < k; kk++) {
-            swap(arr1 + i*k+kk, arr1 + j*k+kk);
+            swap(x + i*k+kk, x + j*k+kk);
         }
     }
 }
