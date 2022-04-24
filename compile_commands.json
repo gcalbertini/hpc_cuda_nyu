@@ -1,0 +1,6 @@
+[
+        { "directory": "C:/Users/mayuk/Desktop/High Performance Computing/hpc_cuda_nyu",
+          "arguments": ["C:/MinGW/bin/g++", "std=c++11", "-o", "file.o", "hogwild.cu"],
+          "file": "hogwild.cu" 
+        }
+]

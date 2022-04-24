@@ -1,6 +1,16 @@
+<<<<<<< HEAD
 *.i
 *.ii
 *.gpu
 *.ptx
 *.cubin
 *.fatbin
+=======
+*.i
+*.ii
+*.gpu
+*.ptx
+*.cubin
+*.fatbin
+.cache
+>>>>>>> main
