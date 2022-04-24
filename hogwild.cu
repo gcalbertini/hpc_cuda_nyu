@@ -53,7 +53,7 @@ double *train_x_C(const unsigned long batch_size, const unsigned long numpredict
 
     double *train_x = (double *)aligned_malloc(batch_size * numpredictors * sizeof(double));
     for (long i = 0; i < batch_size * numpredictors; i++)
-        train_x[i] = 123.4;//drand48();
+        train_x[i] = 123.4; // drand48();
 
     return train_x;
 }
@@ -84,8 +84,7 @@ double *train_y_C(const unsigned long batch_size, const unsigned long numpredict
 double *train_x_csv()
 {
     std::ifstream f;
-    std::vector<std::vector<double>> array; /* vector of vector<double>  */
-    std::string line;                  /* string for line & value */
+    std::string line; /* string for line & value */
     long nrows = 0;
     long ncols = 0;
 
@@ -120,55 +119,86 @@ double *train_x_csv()
         std::cerr << "error: file open failed!\n";
     }
 
+    // std::cout << ncols << std::endl;
     double *train_x = (double *)aligned_malloc(ncols * nrows * sizeof(double));
-    //std::cout << ncols << std::endl;
-    long col = 0;
-    long row = 0;
+    long idx = 0;
     // read lines
     while (std::getline(f, line))
     {
         lineStream.clear();
         lineStream.str(line);
-        //std::cout << "row=" << nrows++
-        //           << " lineStream.str() = " << lineStream.str() << std::endl;
+        // std::cout << "row=" << row++
+        //   << " lineStream.str() = " << lineStream.str() << std::endl;
         while (std::getline(lineStream, line, ','))
         {
-            std::cout << "element=" << line << std::endl;
-            train_x[col * nrows + row] = atof(line.c_str());
-            col++;
+            // std::cout << "element=" << line << std::endl;
+            train_x[idx] = atof(line.c_str());
+            idx++;
         }
-        row++;
     }
+    f.close();
 
     return train_x;
 }
 
-int train_y_csv()
+double *train_y_csv()
 {
     std::ifstream f;
-    std::string line, val; /* string for line & value */
-    std::vector<double> v;
+    std::string line; /* string for line & value */
     long nrows = 0;
 
-    f.open("generated_data/df_Y.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
     }
 
+    std::stringstream lineStream;
+    std::string lastline;
     while (std::getline(f, line))
-    {                              /* read each line */
-        std::stringstream s(line); /* stringstream line */
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        // std::cout << "row=" << nrows++
+        //           << " lineStream.str() = " << lineStream.str() << std::endl;
         nrows++;
     }
+    f.close();
 
-    return 0;
+    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
+    if (!f.is_open())
+    { /* validate file open for reading */
+        std::cerr << "error: file open failed!\n";
+    }
+
+    double *train_y = (double *)aligned_malloc(nrows * sizeof(double));
+    long idx = 0;
+    // read lines
+    while (std::getline(f, line))
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        // std::cout << "row=" << row++
+        //   << " lineStream.str() = " << lineStream.str() << std::endl;
+        while (std::getline(lineStream, line, ','))
+        {
+            // std::cout << "element=" << line << std::endl;
+            train_y[idx] = atof(line.c_str());
+            idx++;
+        }
+    }
+    f.close();
+
+    return train_y;
 }
 
 int main()
 {
     auto X = train_x_csv();
-    std::cout << X[5];
+    std::cout << X[4];
+
+    auto y = train_y_csv();
+    std::cout << y[1];
 
     return 0;
 }
