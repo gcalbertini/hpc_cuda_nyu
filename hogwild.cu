@@ -46,19 +46,19 @@ void calc_gradient(double *train_x, double *train_y, double *weights, double *co
 }
 
 // decide if all double or all type long throughout?
-double *train_x(const unsigned long batch_size, const unsigned long numpredictors)
+double *train_x_C(const unsigned long batch_size, const unsigned long numpredictors)
 {
     /* Generate a new random seed from system time - do this once in your constructor */
     srand(time(0));
 
     double *train_x = (double *)aligned_malloc(batch_size * numpredictors * sizeof(double));
     for (long i = 0; i < batch_size * numpredictors; i++)
-        train_x[i] = drand48();
+        train_x[i] = 123.4;//drand48();
 
     return train_x;
 }
 
-double *train_y(const unsigned long batch_size, const unsigned long numpredictors, double *train_x)
+double *train_y_C(const unsigned long batch_size, const unsigned long numpredictors, double *train_x)
 {
 
     double *train_y = (double *)(aligned_malloc(sizeof *train_y * batch_size));
@@ -81,11 +81,11 @@ double *train_y(const unsigned long batch_size, const unsigned long numpredictor
     return train_y;
 }
 
-std::vector<std::vector<double>> train_x_csv()
+double *train_x_csv()
 {
     std::ifstream f;
     std::vector<std::vector<double>> array; /* vector of vector<double>  */
-    std::string line, val;                  /* string for line & value */
+    std::string line;                  /* string for line & value */
     long nrows = 0;
     long ncols = 0;
 
@@ -93,66 +93,82 @@ std::vector<std::vector<double>> train_x_csv()
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
-        exit; // no effect!! change
     }
 
+    std::stringstream lineStream;
+    std::string lastline;
     while (std::getline(f, line))
-    {                                    /* read each line */
-        std::vector<double> v;           /* row vector v */
-        std::stringstream s(line);       /* stringstream line */
-        while (getline(s, val, ','))     /* get each value (',' delimited) */
-            v.push_back(std::stod(val)); /* add to row vector */
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        // std::cout << "row=" << nrows++
+        //           << " lineStream.str() = " << lineStream.str() << std::endl;
         nrows++;
-        array.push_back(v); /* add row vector to array */
-        ncols++;
     }
 
-    return array;
+    // just reads last line to count columns just by counting commas+1
+    while (std::getline(lineStream, lastline, ','))
+    {
+        // std::cout << "cell=" << lastline << std::endl;
+        ++ncols;
+    }
+    f.close();
+
+    f.open("generated_data/df_X.csv"); /* open file with filename as argument */
+    if (!f.is_open())
+    { /* validate file open for reading */
+        std::cerr << "error: file open failed!\n";
+    }
+
+    double *train_x = (double *)aligned_malloc(ncols * nrows * sizeof(double));
+    //std::cout << ncols << std::endl;
+    long col = 0;
+    long row = 0;
+    // read lines
+    while (std::getline(f, line))
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        //std::cout << "row=" << nrows++
+        //           << " lineStream.str() = " << lineStream.str() << std::endl;
+        while (std::getline(lineStream, line, ','))
+        {
+            std::cout << "element=" << line << std::endl;
+            train_x[col * nrows + row] = atof(line.c_str());
+            col++;
+        }
+        row++;
+    }
+
+    return train_x;
 }
 
-std::vector<double> train_y_csv()
+int train_y_csv()
 {
     std::ifstream f;
     std::string line, val; /* string for line & value */
-    std::vector<double> v;  
+    std::vector<double> v;
     long nrows = 0;
 
     f.open("generated_data/df_Y.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
-        exit; // no effect!! change
     }
 
     while (std::getline(f, line))
-    {                                    /* read each line */
-        std::stringstream s(line);       /* stringstream line */
-        while (getline(s, val, ','))     /* get each value (',' delimited) */
-            v.push_back(std::stod(val)); /* add to row vector */
+    {                              /* read each line */
+        std::stringstream s(line); /* stringstream line */
         nrows++;
     }
 
-    return v;
+    return 0;
 }
 
 int main()
 {
     auto X = train_x_csv();
-    std::vector<std::vector<double>>::iterator it;
-    for (it = X.begin(); it != X.end(); it++)
-    {
-        // cout << (*it) << endl;
-        for (const auto &nexts : *it)
-            std::cout << nexts << std::endl;
-    }
-    // x checks out but needs to be converted to C array
-     std::cout << std::endl;
-    auto y = train_y_csv();
-    for (auto item : y)
-    {
-        std::cout << item << std::endl;
-    }
-    // y checks out but needs to be converted to C array
+    std::cout << X[5];
 
     return 0;
 }
