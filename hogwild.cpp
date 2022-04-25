@@ -10,22 +10,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "utils.h"
-#include <cuda.h>
-#include <assert.h>
-
-// Convenience function for checking CUDA runtime API results
-// can be wrapped around any runtime API call. No-op in release builds.
-inline
-cudaError_t checkCuda(cudaError_t result)
-{
-#if defined(DEBUG) || defined(_DEBUG)
-  if (result != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
-    assert(result == cudaSuccess);
-  }
-#endif
-  return result;
-}
 
 template <typename T>
 void swap(T *a, T *b)
@@ -52,6 +36,60 @@ void shuffleXY(T x, T y, size_t n, size_t k)
         {
             swap(x + i * k + kk, x + j * k + kk);
         }
+    }
+}
+
+// Assume equation of form y= a + bx + cx^2 + dx^3 + ....
+// Squared L2 norm
+// Loss for single example = (y* - y)^2
+// Derivative of loss wrt coeff_i = 2(y* - y)*(i*coeffs[i]*predictor_values[i]^(i-1))
+
+double difflinear(double *weights, double predictor_value, long desired_coeff, double pred, double train_y)
+{
+    if (desired_coeff == 0)
+        return 2 * (pred - train_y);
+
+    return 2 * (pred - train_y) * (desired_coeff * weights[desired_coeff] * pow(predictor_value, desired_coeff - 1));
+}
+
+// calculate gradient for each batch
+void calc_gradient(double *train_x, double *train_y, int batch_size, long numpredictors, double *weights, double *pred, double *w_gradients, double *b_gradient)
+{
+
+    for (int b = 0; b < batch_size; b++)
+    {
+        for (long k = 1; k <= numpredictors; k++)
+        {
+            w_gradients[k] += difflinear(weights, train_x[b * numpredictors + k], k, pred[b], train_y[b]);
+        }
+        b_gradient[0] += difflinear(weights, train_x[0], 0, pred[b], train_y[b]);
+    }
+}
+
+void calc_pred(double *train_x, double *weights, int batch_size, double *w_gradients, double *b_gradient, long numpredictors, double learning_rate, double *pred)
+{
+
+    // calculate the actual prediction using the gradients.
+    // Calculate it in mini-batch gradients and then update
+
+    // update weights based using the gradients
+    weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
+    for (long i = 0; i < numpredictors; i++)
+    {
+        weights[i + 1] = weights[i + 1] - (w_gradients[i] / batch_size) * learning_rate;
+    }
+
+    // update prediction using the new weights
+    // y = a + b*(x_0) + c*(x_1)^2 + d*(x_2)^3 + ....
+    // a, b, c, d ... are weights, x_0, x_1, x_2 are predictor_values
+    for (long i = 0; i < batch_size; i++)
+    {
+        double pred_reduction_sum = weights[0];
+        for (long j = 0; j < numpredictors; j++)
+        {
+            pred_reduction_sum += weights[j + 1] * pow(train_x[i * numpredictors + j], j + 1);
+        }
+        pred[i] = pred_reduction_sum;
     }
 }
 
@@ -166,52 +204,49 @@ double *train_y_csv()
     return train_y;
 }
 
-__global__
-void hogwild_kernel(...) {
-  // to do
+// decide if all double or all type long throughout?
+double *train_x_C(const unsigned long batch_size, const unsigned long numpredictors)
+{
+    /* Generate a new random seed from system time - do this once in your constructor */
+    srand(time(0));
+
+    double *train_x = (double *)aligned_malloc(batch_size * numpredictors * sizeof(double));
+    for (long i = 0; i < batch_size * numpredictors; i++)
+        train_x[i] = 123.4; // drand48();
+
+    return train_x;
 }
 
-// maybe we need reduction kernel???
-// Reduction kernel
-__global__ void reduction_kernel(double *res_d, double *res_out_d, long Nt) {
-	__shared__ double sdata[REDUCTION_BLOCK_SIZE];
-	// each thread loads one element from global to shared mem
-	int tid = threadIdx.x;
-	int i = blockIdx.x*blockDim.x + threadIdx.x;
+double *train_y_C(const unsigned long batch_size, const unsigned long numpredictors, double *train_x)
+{
 
-	sdata[tid] = res_d[i];
-	__syncthreads();
+    double *train_y = (double *)(aligned_malloc(sizeof *train_y * batch_size));
+    // Define random generator with Gaussian distribution
+    double b = 123.;
+    const double mean = 0.0;
+    const double stddev = 0.2;
+    std::default_random_engine generator;
+    std::normal_distribution<double> dist(mean, stddev);
 
-	//reversed looping
-	for (int s=blockDim.x/2; s>0; s>>=1) {
-		if (tid < s) {
-			sdata[tid] += sdata[tid + s];
-		}
-		__syncthreads();
-	}
+    // Add Gaussian noise too
+    for (long i = 0; i < batch_size; i++)
+    {
+        for (long j = 0; j < numpredictors; j++)
+        {
+            train_y[j] = train_x[i * numpredictors + j] + b + dist(generator);
+        }
+    }
 
-	if (tid == 0) {
-		res_out_d[blockIdx.x] = sdata[0];
-	}
+    return train_y;
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     long numpredictors;
     int batch_size;
     long train_size;
     int num_epochs;
     double learning_rate = 0.05;
-
-    if(argc != 5)
-    {
-        fprintf(stderr, "usage: hogwild train_size numpredictors batch_size num_epochs\n");
-        fprintf(stderr, "train_size = number of data points\n");
-        fprintf(stderr, "numpredictors = number of predictors for each data point\n");
-        fprintf(stderr, "batch_size = number of data points in each batch\n");
-        fprintf(stderr, "num_epochs = number of epochs for training\n");
-        exit(1);
-    }
 
     train_size = atol(argv[1]);
     numpredictors = atol(argv[2]);
@@ -222,66 +257,35 @@ int main(int argc, char * argv[])
 
     /// Assume the above is implemented
 
-    // Are w_gradients and b_gradient here necessary if we only need them on GPU?
+    /// todo: initialize random weights and gradients
     double *w_gradients = (double *)malloc(sizeof(double) * numpredictors);
     double *b_gradient = (double *)malloc(sizeof(double));
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
+    ///
 
     double *train_batch_x = (double *)malloc(sizeof(double) * batch_size * numpredictors);
     double *train_batch_y = (double *)malloc(sizeof(double) * batch_size);
     double *pred = (double *)malloc(sizeof(double) * batch_size);
-
-    /// todo: initialize random weights and prediction
-
-    double *w_gradients_d, *b_gradient_d, *weights_d, *train_batch_x_d, *train_batch_y_d, *pred_d;
-
-    checkCuda(cudaMalloc((void**)&w_gradients_d, numpredictors*sizeof(double)));
-    checkCuda(cudaMalloc((void**)&b_gradient_d, 1*sizeof(double)));
-    checkCuda(cudaMalloc((void**)&weights_d, (numpredictors+1)*sizeof(double)));
-
-    checkCuda(cudaMalloc((void**)&train_batch_x_d, batch_size*numpredictors*sizeof(double)));
-    checkCuda(cudaMalloc((void**)&train_batch_y_d, batch_size*sizeof(double)));
-    checkCuda(cudaMalloc((void**)&pred_d, batch_size*sizeof(double)));
-
-    // assume weights and prediction are initialized
-    checkCuda(cudaMemcpyAsync(weights_d, weights, (numpredictors+1)*sizeof(double), cudaMemcpyHostToDevice));
-    checkCuda(cudaMemcpyAsync(pred_d, pred, batch_size*sizeof(double), cudaMemcpyHostToDevice));
-    checkCuda(cudaDeviceSynchronize());
-
     long start = 0;
 
     for (int epoch = 0; epoch < num_epochs; epoch++)
-    {   
-        // shuffle and run from the start of the training set
-        shuffleXY(X, y, train_size, numpredictors);
-        for (long i = 0; i < train_size / batch_size; i++)
+    {
+        for (long i = 0; i < train_size; i++)
         {
-            train_batch_x = ...;
-            train_batch_y = ...;
-            checkCuda(cudaMemcpyAsync(train_batch_x_d, train_batch_x, batch_size*numpredictors*sizeof(double), cudaMemcpyHostToDevice));
-            checkCuda(cudaMemcpyAsync(train_batch_y_d, train_batch_y, batch_size*sizeof(double), cudaMemcpyHostToDevice));
-            // run some kernels
-            
-
+            for (long j = 0; j < numpredictors; j++)
+            {
+                train_batch_x[start * numpredictors + j] = X[i * numpredictors + j];
+            }
+            train_batch_y[start] = y[i];
+            start++;
+            if ((i + 1) % batch_size == 0)
+            {
+                calc_pred(train_batch_x, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
+                start = 0;
+            }
         }
     }
 
-
-    free(w_gradients);
-    free(b_gradient);
-    free(weights);
-    free(train_batch_x);
-    free(train_batch_y);
-    free(pred);
-
-    cudaFree(w_gradients_d);
-    cudaFree(b_gradient_d);
-    cudaFree(weights_d);
-    cudaFree(train_batch_x_d);
-    cudaFree(train_batch_y_d);
-    cudaFree(pred_d);
-
     return 0;
-
 }
-
