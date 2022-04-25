@@ -6,3 +6,4 @@
 *.fatbin
 *.out
 *.exe
+.vscode
