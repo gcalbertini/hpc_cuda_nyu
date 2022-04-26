@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>  
 #include "utils.h"
 
 template <typename T>
@@ -66,12 +67,13 @@ void calc_gradient(double *train_x, double *train_y, int batch_size, long numpre
     }
 }
 
-void calc_pred(double *train_x, double *weights, int batch_size, double *w_gradients, double *b_gradient, long numpredictors, double learning_rate, double *pred)
+void calc_pred(int epoch, double *train_x, double *train_y, double *weights, int batch_size, double *w_gradients, double *b_gradient, long numpredictors, double learning_rate, double *pred)
 {
 
     // calculate the actual prediction using the gradients.
     // Calculate it in mini-batch gradients and then update
-
+    
+    double loss = 0;
     // update weights based using the gradients
     weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
     for (long i = 0; i < numpredictors; i++)
@@ -90,7 +92,9 @@ void calc_pred(double *train_x, double *weights, int batch_size, double *w_gradi
             pred_reduction_sum += weights[j + 1] * pow(train_x[i * numpredictors + j], j + 1);
         }
         pred[i] = pred_reduction_sum;
+        loss += pow(pred_reduction_sum - train_y[i], 2);
     }
+    printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
 }
 
 double *train_x_csv()
@@ -255,12 +259,25 @@ int main(int argc, char *argv[])
 
     //X, y comes from csv function now? Both now should be C array
 
+    double *X = train_x_csv();
+    double *y = train_y_csv();
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
+    srand (time(NULL));
     double *w_gradients = (double *)malloc(sizeof(double) * numpredictors);
     double *b_gradient = (double *)malloc(sizeof(double));
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
+
+    for (long i = 0; i < numpredictors + 1; i++)
+    {
+        weights[i] = 0;
+    }
+
+    memset(w_gradients, 0, numpredictors);
+    b_gradient[0] = 0;
+
+
     ///
 
     double *train_batch_x = (double *)malloc(sizeof(double) * batch_size * numpredictors);
@@ -280,7 +297,7 @@ int main(int argc, char *argv[])
             start++;
             if ((i + 1) % batch_size == 0)
             {
-                calc_pred(train_batch_x, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
                 calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
                 start = 0;
             }
