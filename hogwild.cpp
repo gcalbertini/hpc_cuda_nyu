@@ -269,11 +269,7 @@ int main(int argc, char *argv[])
     double *b_gradient = (double *)malloc(sizeof(double));
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
 
-    for (long i = 0; i < numpredictors + 1; i++)
-    {
-        weights[i] = 0;
-    }
-
+    memset(weights, 0, numpredictors);
     memset(w_gradients, 0, numpredictors);
     b_gradient[0] = 0;
 
