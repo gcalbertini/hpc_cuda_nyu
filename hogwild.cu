@@ -216,30 +216,6 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
     
 }
 
-// maybe we need reduction kernel???
-// Reduction kernel
-__global__ void reduction_kernel(double *res_d, double *res_out_d, long Nt) {
-	__shared__ double sdata[REDUCTION_BLOCK_SIZE];
-	// each thread loads one element from global to shared mem
-	int tid = threadIdx.x;
-	int i = blockIdx.x*blockDim.x + threadIdx.x;
-
-	sdata[tid] = res_d[i];
-	__syncthreads();
-
-	//reversed looping
-	for (int s=blockDim.x/2; s>0; s>>=1) {
-		if (tid < s) {
-			sdata[tid] += sdata[tid + s];
-		}
-		__syncthreads();
-	}
-
-	if (tid == 0) {
-		res_out_d[blockIdx.x] = sdata[0];
-	}
-}
-
 int main(int argc, char * argv[])
 {
     long numpredictors;
@@ -266,6 +242,7 @@ int main(int argc, char * argv[])
     //X, y comes from csv function now? Both now should be C array
     double *X = train_x_csv();
     double *y = train_y_csv();
+    // shuffleXY(X,y,train_size,numpredictors)
 
 
     // Are w_gradients and b_gradient here necessary if we only need them on GPU?
@@ -294,9 +271,9 @@ int main(int argc, char * argv[])
     int threadsperblock;
  
     if( (batch_size % THREADS) == 0 )
-	    numblocks = batch_size/ THREADS;
+	    numblocks = train_size/ batch_size/ THREADS;
     else 
-      	numblocks = (batch_size/THREADS)>0? (batch_size/THREADS)+1:1 ;
+      	numblocks = (train_size/batch_size/THREADS)>0? (train_size/batch_size/THREADS)+1:1 ;
     
     threadsperblock = THREADS;
 
