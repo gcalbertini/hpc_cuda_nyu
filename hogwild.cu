@@ -13,7 +13,7 @@
 #include <cuda.h>
 #include <assert.h>
 
-#define THREADS 1000
+#define threadsperblock 1000
 
 // Convenience function for checking CUDA runtime API results
 // can be wrapped around any runtime API call. No-op in release builds.
@@ -169,23 +169,22 @@ double *train_y_csv()
 }
 
 __global__
-void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int batch_size, double learning_rate ,double *X, double *y, double *weights) {
-    double w_gradients[numpredictors];
+void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int batch_size, double learning_rate ,double *X, double *y, double *weights, double *w_gradients, double *pred) {
     double b_gradient = 0;
 
-    double pred[batch_size];
-
-    start_batch = blockIdx.x * blockDim.x + threadIdx.x;
+    long idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     for (int epoch = 0; epoch < num_epochs; epoch++)
     {
-        for (long i = batch_size*start_batch; i < (start_batch*batch_size) + batch_size; i++)
+        long start = batch_size*idx;
+        long pred_start_index = idx*batch_size;
+        for (long i = start; i < start + batch_size; i++)
         {
 
-            weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
-            for (long i = 0; i < numpredictors; i++)
+            weights[0] = weights[0] - (b_gradient / batch_size) * learning_rate;
+            for (long k = 0; k < numpredictors; k++)
             {
-                weights[i + 1] = weights[i + 1] - (w_gradients[i] / batch_size) * learning_rate;
+                weights[k + 1] = weights[k + 1] - (w_gradients[idx*numpredictors+k] / batch_size) * learning_rate;
             }
 
             // update prediction using the new weights
@@ -197,20 +196,20 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
             {
                 pred_reduction_sum += weights[j + 1] * pow(X[i * numpredictors + j], j + 1);
             }
-            pred[i] = pred_reduction_sum;
-            loss += pow(pred_reduction_sum - train_y[i], 2);
+            pred[pred_start_index+i-start] = pred_reduction_sum;
+            // loss += pow(pred_reduction_sum - train_y[i], 2);
                 
         }
 
             
-        for (long i = batch_size*start_batch; i < (start_batch*batch_size) + batch_size; i++)
+        for (long i = start; i < start + batch_size; i++)
         {
             for (long k = 1; k <= numpredictors; k++)
             {
-            w_gradients[k] += 2 * (pred[i] - y[i]) * (k * weights[k] * pow(X[i * numpredictors + k], k - 1));
+                w_gradients[idx*numpredictors+k] += 2 * (pred[pred_start_index+i-start] - y[i]) * (k * weights[k] * pow(X[i * numpredictors + k], k - 1));
             
             }
-            b_gradient += 2 * (pred[i] - y[i]);
+            b_gradient += 2 * (pred[pred_start_index+i-start] - y[i]);
         }
     }
     
@@ -239,47 +238,49 @@ int main(int argc, char * argv[])
     batch_size = atoi(argv[3]);
     num_epochs = atoi(argv[4]);
 
+    int numblocks;
+    int total_threads = train_size / batch_size;
+
+    if (train_size % batch_size != 0) {
+        total_threads += 1;
+    }
+ 
+    if( (total_threads % threadsperblock) == 0 )
+	    numblocks = total_threads/ threadsperblock;
+    else 
+      	numblocks = (total_threads/threadsperblock)>0? (total_threads/threadsperblock)+1:1 ;
+
     //X, y comes from csv function now? Both now should be C array
     double *X = train_x_csv();
     double *y = train_y_csv();
     // shuffleXY(X,y,train_size,numpredictors)
 
-
-    // Are w_gradients and b_gradient here necessary if we only need them on GPU?
-    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
+   double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
     memset(weights, 0, numpredictors);
 
+    double *weights_d, *w_gradients_d, *pred_d, *X_d, *y_d ;
 
-    //double *pred = (double *)malloc(sizeof(double) * batch_size);
+    size_t wg_size = size_t(total_threads*numpredictors) * sizeof(double);
+    size_t pred_size = size_t(total_threads*batch_size) * sizeof(double);
 
-    double *weights_d, *pred_d, *X_d, *y_d ;
+    checkCuda(cudaMalloc((void**)&w_gradients_d, wg_size));
+    checkCuda(cudaMemset(w_gradients_d, 0, wg_size));
+    checkCuda(cudaMalloc((void**)&pred_d, pred_size));
+    // checkCuda(cudaMemset(pred_d, 0, pred_size));
 
     checkCuda(cudaMalloc((void**)&weights_d, (numpredictors+1)*sizeof(double)));
     checkCuda(cudaMalloc((void**)&X_d, train_size*(numpredictors)*sizeof(double)));
     checkCuda(cudaMalloc((void**)&y_d, train_size*sizeof(double)));
 
-    //checkCuda(cudaMalloc((void**)&pred_d, batch_size*sizeof(double)));
-
     // assume weights and prediction are initialized
     checkCuda(cudaMemcpyAsync(weights_d, weights, (numpredictors+1)*sizeof(double), cudaMemcpyHostToDevice));
     checkCuda(cudaMemcpyAsync(X_d, X, train_size*(numpredictors)*sizeof(double), cudaMemcpyHostToDevice));
     checkCuda(cudaMemcpyAsync(y_d, y, train_size*sizeof(double), cudaMemcpyHostToDevice));
-    //checkCuda(cudaMemcpyAsync(pred_d, pred, batch_size*sizeof(double), cudaMemcpyHostToDevice));
     checkCuda(cudaDeviceSynchronize());
-
-    int numblocks;
-    int threadsperblock;
- 
-    if( (batch_size % THREADS) == 0 )
-	    numblocks = train_size/ batch_size/ THREADS;
-    else 
-      	numblocks = (train_size/batch_size/THREADS)>0? (train_size/batch_size/THREADS)+1:1 ;
-    
-    threadsperblock = THREADS;
 
     printf("GPU: %d blocks of %d threads each\n", numblocks, threadsperblock); 
 
-    hogwild_kernel<<<numblocks , threadsperblock>>>(num_epochs, train_size, numpredictors, batch_size, learning_rate, X_d, y_d, weights_d);
+    hogwild_kernel<<<numblocks , threadsperblock>>>(num_epochs, train_size, numpredictors, batch_size, learning_rate, X_d, y_d, weights_d, w_gradients_d, pred_d);
 
 
     free(weights);
