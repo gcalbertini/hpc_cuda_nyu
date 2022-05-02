@@ -257,7 +257,6 @@ int main(int argc, char *argv[])
     batch_size = atoi(argv[3]);
     num_epochs = atoi(argv[4]);
 
-    //X, y comes from csv function now? Both now should be C array
 
     double *X = train_x_csv();
     double *y = train_y_csv();
@@ -273,8 +272,6 @@ int main(int argc, char *argv[])
     memset(w_gradients, 0, numpredictors);
     b_gradient[0] = 0;
 
-
-    ///
 
     double *train_batch_x = (double *)malloc(sizeof(double) * batch_size * numpredictors);
     double *train_batch_y = (double *)malloc(sizeof(double) * batch_size);
