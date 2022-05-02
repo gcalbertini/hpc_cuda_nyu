@@ -98,14 +98,14 @@ double calc_pred(int epoch, double *train_x, double *train_y, double *weights, i
     return loss;
 }
 
-double *train_x_csv()
+double *train_x_csv(std::string inFile)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     long nrows = 0;
     long ncols = 0;
 
-    f.open("generated_data/df_X.csv"); /* open file with filename as argument */
+    f.open(inFile); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -130,7 +130,7 @@ double *train_x_csv()
     }
     f.close();
 
-    f.open("generated_data/df_X.csv"); /* open file with filename as argument */
+    f.open(inFile); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -158,13 +158,13 @@ double *train_x_csv()
     return train_x;
 }
 
-double *train_y_csv()
+double *train_y_csv(std::string inFile)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     long nrows = 0;
 
-    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
+    f.open(inFile); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -182,7 +182,7 @@ double *train_y_csv()
     }
     f.close();
 
-    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
+    f.open(inFile); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -234,15 +234,15 @@ int main(int argc, char *argv[])
     num_epochs = atoi(argv[4]);
 
 
-    double *X = train_x_csv();
-    double *y = train_y_csv();
+    double *X = train_x_csv("generated_data/df_X_train.csv");
+    double *y = train_y_csv("generated_data/df_y_train.csv");
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
     srand (time(NULL));
-    double *w_gradients = (double *)malloc(sizeof(double) * numpredictors);
-    double *b_gradient = (double *)malloc(sizeof(double));
-    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
+    double *w_gradients = (double *)malloc(sizeof(double) * numpredictors); //values after differentiation 
+    double *b_gradient = (double *)malloc(sizeof(double)); //gradient for single bias term
+    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1)); //weights minus learning rate
 
     memset(weights, 0, numpredictors);
     memset(w_gradients, 0, numpredictors);
