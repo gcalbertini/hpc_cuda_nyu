@@ -48,9 +48,9 @@ void shuffleXY(T x, T y, size_t n, size_t k)
 double difflinear(double *weights, double predictor_value, long desired_coeff, double pred, double train_y)
 {
     if (desired_coeff == 0)
-        return -2 * (pred - train_y);
+        return -2 * (train_y - pred);
 
-    return -2 * (pred - train_y) * pow(predictor_value, desired_coeff);
+    return -2 * (train_y - pred) * pow(predictor_value, desired_coeff);
 }
 
 // calculate gradient for each batch
@@ -72,14 +72,14 @@ double calc_pred(int epoch, double *train_x, double *train_y, double *weights, i
 
     // calculate the actual prediction using the gradients.
     // Calculate it in mini-batch gradients and then update
-    
+
     double loss = 0;
     // update weights based using the gradients
-    weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
-    for (long i = 0; i < numpredictors; i++)
-    {
-        weights[i + 1] = weights[i + 1] - (w_gradients[i] / batch_size) * learning_rate;
-    }
+    // weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
+    // for (long i = 0; i < numpredictors; i++)
+    // {
+    //     weights[i + 1] = weights[i + 1] - (w_gradients[i] / batch_size) * learning_rate;
+    // }
 
     // update prediction using the new weights
     // y = a + b*(x_0) + c*(x_1)^2 + d*(x_2)^3 + ....
@@ -96,6 +96,15 @@ double calc_pred(int epoch, double *train_x, double *train_y, double *weights, i
     }
     //printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
     return loss;
+}
+
+void update_weights(double *weights, double *w_gradients, double *b_gradient, int batch_size, long numpredictors, double learning_rate)
+{
+    weights[0] = weights[0] - (b_gradient[0] / batch_size) * learning_rate;
+    for (long i = 0; i < numpredictors; i++)
+    {
+        weights[i + 1] = weights[i + 1] - (w_gradients[i] / batch_size) * learning_rate;
+    }
 }
 
 double *train_x_csv(std::string inFile)
@@ -268,15 +277,17 @@ int main(int argc, char *argv[])
             start++;
             if ((i + 1) % batch_size == 0)
             {
-                double loss = calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
-                calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
-                start = 0;
                 memset(w_gradients, 0, numpredictors);
                 b_gradient[0] = 0;
+                double loss = calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
+                update_weights(weights, w_gradients, b_gradient, batch_size, numpredictors, learning_rate);
+                start = 0;
                 loss_sum += loss;
             }
         }
         printf("Epoch: %d Average loss: %f\n", epoch ,loss_sum/((train_size)/batch_size));
+        learning_rate = learning_rate / 2;
     }
 
     return 0;
