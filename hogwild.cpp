@@ -48,9 +48,9 @@ void shuffleXY(T x, T y, size_t n, size_t k)
 double difflinear(double *weights, double predictor_value, long desired_coeff, double pred, double train_y)
 {
     if (desired_coeff == 0)
-        return 2 * (pred - train_y);
+        return -2 * (pred - train_y);
 
-    return 2 * (pred - train_y) * (desired_coeff * weights[desired_coeff] * pow(predictor_value, desired_coeff - 1));
+    return -2 * (pred - train_y) * pow(predictor_value, desired_coeff);
 }
 
 // calculate gradient for each batch
@@ -67,7 +67,7 @@ void calc_gradient(double *train_x, double *train_y, int batch_size, long numpre
     }
 }
 
-void calc_pred(int epoch, double *train_x, double *train_y, double *weights, int batch_size, double *w_gradients, double *b_gradient, long numpredictors, double learning_rate, double *pred)
+double calc_pred(int epoch, double *train_x, double *train_y, double *weights, int batch_size, double *w_gradients, double *b_gradient, long numpredictors, double learning_rate, double *pred)
 {
 
     // calculate the actual prediction using the gradients.
@@ -94,7 +94,8 @@ void calc_pred(int epoch, double *train_x, double *train_y, double *weights, int
         pred[i] = pred_reduction_sum;
         loss += pow(pred_reduction_sum - train_y[i], 2);
     }
-    printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
+    //printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
+    return loss;
 }
 
 double *train_x_csv()
@@ -208,41 +209,6 @@ double *train_y_csv()
     return train_y;
 }
 
-// decide if all double or all type long throughout?
-double *train_x_C(const unsigned long batch_size, const unsigned long numpredictors)
-{
-    /* Generate a new random seed from system time - do this once in your constructor */
-    srand(time(0));
-
-    double *train_x = (double *)aligned_malloc(batch_size * numpredictors * sizeof(double));
-    for (long i = 0; i < batch_size * numpredictors; i++)
-        train_x[i] = 123.4; // drand48();
-
-    return train_x;
-}
-
-double *train_y_C(const unsigned long batch_size, const unsigned long numpredictors, double *train_x)
-{
-
-    double *train_y = (double *)(aligned_malloc(sizeof *train_y * batch_size));
-    // Define random generator with Gaussian distribution
-    double b = 123.;
-    const double mean = 0.0;
-    const double stddev = 0.2;
-    std::default_random_engine generator;
-    std::normal_distribution<double> dist(mean, stddev);
-
-    // Add Gaussian noise too
-    for (long i = 0; i < batch_size; i++)
-    {
-        for (long j = 0; j < numpredictors; j++)
-        {
-            train_y[j] = train_x[i * numpredictors + j] + b + dist(generator);
-        }
-    }
-
-    return train_y;
-}
 
 int main(int argc, char *argv[])
 {
@@ -251,6 +217,16 @@ int main(int argc, char *argv[])
     long train_size;
     int num_epochs;
     double learning_rate = 0.05;
+
+    if(argc != 5)
+    {
+        fprintf(stderr, "usage: hogwild train_size numpredictors batch_size num_epochs\n");
+        fprintf(stderr, "train_size = number of data points\n");
+        fprintf(stderr, "numpredictors = number of predictors for each data point\n");
+        fprintf(stderr, "batch_size = number of data points in each batch\n");
+        fprintf(stderr, "num_epochs = number of epochs for training\n");
+        exit(1);
+    }
 
     train_size = atol(argv[1]);
     numpredictors = atol(argv[2]);
@@ -277,9 +253,11 @@ int main(int argc, char *argv[])
     double *train_batch_y = (double *)malloc(sizeof(double) * batch_size);
     double *pred = (double *)malloc(sizeof(double) * batch_size);
     long start = 0;
+    double loss_sum=0;
 
     for (int epoch = 0; epoch < num_epochs; epoch++)
     {
+        loss_sum = 0;
         for (long i = 0; i < train_size; i++)
         {
             for (long j = 0; j < numpredictors; j++)
@@ -290,11 +268,15 @@ int main(int argc, char *argv[])
             start++;
             if ((i + 1) % batch_size == 0)
             {
-                calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                double loss = calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
                 calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
                 start = 0;
+                memset(w_gradients, 0, numpredictors);
+                b_gradient[0] = 0;
+                loss_sum += loss;
             }
         }
+        printf("Epoch: %d Average loss: %f\n", epoch ,loss_sum/((train_size)/batch_size));
     }
 
     return 0;
