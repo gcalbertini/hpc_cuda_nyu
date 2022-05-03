@@ -218,56 +218,6 @@ double *train_y_csv(std::string inFile)
     return train_y;
 }
 
-void generateMatrix(std::string filePath, double *X, long numpredictors)
-{
-	std::ifstream inFile;
-	inFile.open(filePath);
-	std::string fileline, filecell;
-	if (!inFile.is_open())
-	{
-		std::cerr << "Could not open the file - '"
-				  << filePath << "'" << std::endl;
-		double *X = nullptr;
-	}
-	else
-	{
-		long nrows = 0;
-		while (getline(inFile, fileline))
-		{
-			long ncols = 0;
-			std::stringstream linestream(fileline);
-			while (getline(linestream, filecell, ','))
-			{
-				X[nrows * numpredictors + ncols++] = stod(filecell);
-			}
-			nrows++;
-		}
-	}
-	inFile.close();
-}
-
-void generateVector(std::string filePath, double *y)
-{
-	std::ifstream inFile;
-	inFile.open(filePath);
-	std::string fileline;
-	if (!inFile.is_open())
-	{
-		std::cerr << "Could not open the file - '"
-				  << filePath << "'" << std::endl;
-		double *y = nullptr;
-	}
-	else
-	{
-		long nrows = 0;
-		while (getline(inFile, fileline, ','))
-		{
-			y[nrows++] = stod(fileline);
-		}
-	}
-	inFile.close();
-}
-
 
 int main(int argc, char *argv[])
 {
@@ -293,15 +243,8 @@ int main(int argc, char *argv[])
     num_epochs = atoi(argv[4]);
 
 
-    double *X = (double *)malloc(train_size * (numpredictors+1) * sizeof(double));
-	double *y = (double *)malloc(train_size * sizeof(double));
-
-	const char *train_file_x = "generated_data/df_X_train.csv";
-	const char *train_file_y = "generated_data/df_y_train.csv";
-
-	// get data from csv on python side
-	generateVector(train_file_y, y);
-	generateMatrix(train_file_x, X, numpredictors+1);
+    double *X = train_x_csv("generated_data/df_X_train.csv");
+    double *y = train_y_csv("generated_data/df_y_train.csv");
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
@@ -346,15 +289,6 @@ int main(int argc, char *argv[])
         printf("Epoch: %d Average loss: %f\n", epoch ,loss_sum/((train_size)/batch_size));
         learning_rate = learning_rate / 2;
     }
-
-	free(train_batch_x);
-	free(train_batch_y);
-	free(pred);
-	free(w_gradients);
-	free(b_gradient);
-	free(weights);
-	free(X);
-	free(y);
 
     return 0;
 }
