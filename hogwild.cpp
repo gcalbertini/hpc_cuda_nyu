@@ -59,7 +59,7 @@ void calc_gradient(double *train_x, double *train_y, int batch_size, long numpre
 
     for (int b = 0; b < batch_size; b++)
     {
-        for (long k = 1; k <= numpredictors; k++)
+        for (long k = 1; k < numpredictors; k++)
         {
             w_gradients[k] += difflinear(weights, train_x[b * numpredictors + k], k, pred[b], train_y[b]);
         }
