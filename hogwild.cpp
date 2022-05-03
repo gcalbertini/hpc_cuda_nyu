@@ -108,46 +108,18 @@ void update_weights(double *weights, double *w_gradients, double *b_gradient, in
 }
 
 
-double *train_x_csv()
+void train_x_csv(double * X, long nrows, long ncols)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
-    long nrows = 0;
-    long ncols = 0;
-
-    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
-    if (!f.is_open())
-    { /* validate file open for reading */
-        std::cerr << "error: file open failed!\n";
-    }
-
     std::stringstream lineStream;
-    std::string lastline;
-    while (std::getline(f, line))
-    {
-        lineStream.clear();
-        lineStream.str(line);
-        // std::cout << "row=" << nrows++
-        //           << " lineStream.str() = " << lineStream.str() << std::endl;
-        nrows++;
-    }
-
-    // just reads last line to count columns just by counting commas+1
-    while (std::getline(lineStream, lastline, ','))
-    {
-        // std::cout << "cell=" << lastline << std::endl;
-        ++ncols;
-    }
-    f.close();
-
+  
     f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
     }
 
-    // std::cout << ncols << std::endl;
-    double *train_x = (double *)aligned_malloc(ncols * nrows * sizeof(double));
     long idx = 0;
     // read lines
     while (std::getline(f, line))
@@ -159,46 +131,25 @@ double *train_x_csv()
         while (std::getline(lineStream, line, ','))
         {
             // std::cout << "element=" << line << std::endl;
-            train_x[idx] = atof(line.c_str());
+            X[idx] = atof(line.c_str());
             idx++;
         }
     }
     f.close();
-
-    return train_x;
 }
 
-double *train_y_csv()
+void train_y_csv(double * y, long nrows)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
-    long nrows = 0;
-
-    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
-    if (!f.is_open())
-    { /* validate file open for reading */
-        std::cerr << "error: file open failed!\n";
-    }
-
     std::stringstream lineStream;
-    std::string lastline;
-    while (std::getline(f, line))
-    {
-        lineStream.clear();
-        lineStream.str(line);
-        // std::cout << "row=" << nrows++
-        //           << " lineStream.str() = " << lineStream.str() << std::endl;
-        nrows++;
-    }
-    f.close();
-
+   
     f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
     }
 
-    double *train_y = (double *)aligned_malloc(nrows * sizeof(double));
     long idx = 0;
     // read lines
     while (std::getline(f, line))
@@ -210,13 +161,11 @@ double *train_y_csv()
         while (std::getline(lineStream, line, ','))
         {
             // std::cout << "element=" << line << std::endl;
-            train_y[idx] = atof(line.c_str());
+            y[idx] = atof(line.c_str());
             idx++;
         }
     }
     f.close();
-
-    return train_y;
 }
 
 int main(int argc, char *argv[])
@@ -243,8 +192,10 @@ int main(int argc, char *argv[])
     num_epochs = atoi(argv[4]);
 
     
-    double *X = train_x_csv();
-    double *y = train_y_csv();
+    double *X = (double *)malloc(sizeof(double)*(numpredictors+1)*train_size);
+    double *y = (double *)malloc(sizeof(double)*train_size);
+    train_x_csv(X, train_size, numpredictors+1);
+    train_y_csv(y, train_size);
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
@@ -291,6 +242,15 @@ int main(int argc, char *argv[])
         printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / ((train_size) / batch_size));
         learning_rate = learning_rate / 2;
     }
+
+    free(train_batch_x);
+    free(train_batch_y);
+    free(pred);
+    free(w_gradients);
+    free(b_gradient);
+    free(weights);
+    free(X);
+    free(y);
 
     return 0;
 }
