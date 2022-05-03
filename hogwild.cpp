@@ -253,8 +253,10 @@ int main(int argc, char *argv[])
     double *b_gradient = (double *)malloc(sizeof(double));                    // gradient for single bias term
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1)); // weights minus learning rate
 
-    memset(weights, 0, numpredictors);
-    memset(w_gradients, 0, numpredictors);
+    // memset(weights, 0, numpredictors);
+    // memset(w_gradients, 0, numpredictors);
+    std::fill_n(weights, numpredictors + 1, 0.0);
+    std::fill_n(w_gradients, numpredictors, 0.0);
     b_gradient[0] = 0;
 
     double *train_batch_x = (double *)malloc(sizeof(double) * batch_size * numpredictors);
@@ -276,7 +278,8 @@ int main(int argc, char *argv[])
             start++;
             if ((i + 1) % batch_size == 0)
             {
-                memset(w_gradients, 0, numpredictors);
+                //memset(w_gradients, 0, numpredictors);
+                std::fill_n(w_gradients, numpredictors, 0.0);
                 b_gradient[0] = 0;
                 double loss = calc_pred(epoch + 1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
                 calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
