@@ -192,9 +192,9 @@ int main(int argc, char *argv[])
     num_epochs = atoi(argv[4]);
 
     
-    double *X = (double *)malloc(sizeof(double)*(numpredictors+1)*train_size);
+    double *X = (double *)malloc(sizeof(double)*numpredictors*train_size);
     double *y = (double *)malloc(sizeof(double)*train_size);
-    train_x_csv(X, train_size, numpredictors+1);
+    train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
     /// Assume the above is implemented
 
