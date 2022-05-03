@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <time.h>  
+#include <time.h>
 #include "utils.h"
 
 template <typename T>
@@ -94,7 +94,7 @@ double calc_pred(int epoch, double *train_x, double *train_y, double *weights, i
         pred[i] = pred_reduction_sum;
         loss += pow(pred_reduction_sum - train_y[i], 2);
     }
-    //printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
+    // printf("Epoch: %d loss: %f\n", epoch ,loss/batch_size);
     return loss;
 }
 
@@ -107,14 +107,15 @@ void update_weights(double *weights, double *w_gradients, double *b_gradient, in
     }
 }
 
-double *train_x_csv(std::string inFile)
+
+double *train_x_csv()
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     long nrows = 0;
     long ncols = 0;
 
-    f.open(inFile); /* open file with filename as argument */
+    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -139,7 +140,7 @@ double *train_x_csv(std::string inFile)
     }
     f.close();
 
-    f.open(inFile); /* open file with filename as argument */
+    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -167,13 +168,13 @@ double *train_x_csv(std::string inFile)
     return train_x;
 }
 
-double *train_y_csv(std::string inFile)
+double *train_y_csv()
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     long nrows = 0;
 
-    f.open(inFile); /* open file with filename as argument */
+    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -191,7 +192,7 @@ double *train_y_csv(std::string inFile)
     }
     f.close();
 
-    f.open(inFile); /* open file with filename as argument */
+    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -218,7 +219,6 @@ double *train_y_csv(std::string inFile)
     return train_y;
 }
 
-
 int main(int argc, char *argv[])
 {
     long numpredictors;
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
     int num_epochs;
     double learning_rate = 0.05;
 
-    if(argc != 5)
+    if (argc != 5)
     {
         fprintf(stderr, "usage: hogwild train_size numpredictors batch_size num_epochs\n");
         fprintf(stderr, "train_size = number of data points\n");
@@ -242,27 +242,26 @@ int main(int argc, char *argv[])
     batch_size = atoi(argv[3]);
     num_epochs = atoi(argv[4]);
 
-
-    double *X = train_x_csv("generated_data/df_X_train.csv");
-    double *y = train_y_csv("generated_data/df_y_train.csv");
+    
+    double *X = train_x_csv();
+    double *y = train_y_csv();
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
-    srand (time(NULL));
-    double *w_gradients = (double *)malloc(sizeof(double) * numpredictors); //values after differentiation 
-    double *b_gradient = (double *)malloc(sizeof(double)); //gradient for single bias term
-    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1)); //weights minus learning rate
+    srand(time(NULL));
+    double *w_gradients = (double *)malloc(sizeof(double) * numpredictors);   // values after differentiation
+    double *b_gradient = (double *)malloc(sizeof(double));                    // gradient for single bias term
+    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1)); // weights minus learning rate
 
     memset(weights, 0, numpredictors);
     memset(w_gradients, 0, numpredictors);
     b_gradient[0] = 0;
 
-
     double *train_batch_x = (double *)malloc(sizeof(double) * batch_size * numpredictors);
     double *train_batch_y = (double *)malloc(sizeof(double) * batch_size);
     double *pred = (double *)malloc(sizeof(double) * batch_size);
     long start = 0;
-    double loss_sum=0;
+    double loss_sum = 0;
 
     for (int epoch = 0; epoch < num_epochs; epoch++)
     {
@@ -279,14 +278,14 @@ int main(int argc, char *argv[])
             {
                 memset(w_gradients, 0, numpredictors);
                 b_gradient[0] = 0;
-                double loss = calc_pred(epoch+1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                double loss = calc_pred(epoch + 1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
                 calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
                 update_weights(weights, w_gradients, b_gradient, batch_size, numpredictors, learning_rate);
                 start = 0;
                 loss_sum += loss;
             }
         }
-        printf("Epoch: %d Average loss: %f\n", epoch ,loss_sum/((train_size)/batch_size));
+        printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / ((train_size) / batch_size));
         learning_rate = learning_rate / 2;
     }
 
