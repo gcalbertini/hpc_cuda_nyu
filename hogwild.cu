@@ -89,7 +89,7 @@ double *train_x_csv()
     }
     f.close();
 
-    f.open("generated_data/df_X.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -123,7 +123,7 @@ double *train_y_csv()
     std::string line; /* string for line & value */
     long nrows = 0;
 
-    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -169,15 +169,16 @@ double *train_y_csv()
 }
 
 __global__
-void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int batch_size, double learning_rate ,double *X, double *y, double *weights, double *w_gradients, double *pred) {
+void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int batch_size, double learning_rate ,double *X, double *y, double *weights, double *w_gradients, double *pred, double *loss_arr) {
     double b_gradient = 0;
-
+    double loss;
     long idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     for (int epoch = 0; epoch < num_epochs; epoch++)
     {
         long start = batch_size*idx;
         long pred_start_index = idx*batch_size;
+        loss = 0;
         for (long i = start; i < start + batch_size; i++)
         {
 
@@ -185,8 +186,9 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
             for (long k = 0; k < numpredictors; k++)
             {
                 weights[k + 1] = weights[k + 1] - (w_gradients[idx*numpredictors+k] / batch_size) * learning_rate;
+                
             }
-
+            
             // update prediction using the new weights
             // y = a + b*(x_0) + c*(x_1)^2 + d*(x_2)^3 + ....
             // a, b, c, d ... are weights, x_0, x_1, x_2 are predictor_values
@@ -195,9 +197,11 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
             for (long j = 0; j < numpredictors; j++)
             {
                 pred_reduction_sum += weights[j + 1] * pow(X[i * numpredictors + j], j + 1);
+                w_gradients[idx*numpredictors+j] = 0;
             }
-            pred[pred_start_index+i-start] = pred_reduction_sum;
-            // loss += pow(pred_reduction_sum - train_y[i], 2);
+            pred[i] = pred_reduction_sum;
+            b_gradient = 0;
+            loss += pow(pred_reduction_sum - y[i], 2);
                 
         }
 
@@ -206,11 +210,13 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
         {
             for (long k = 1; k <= numpredictors; k++)
             {
-                w_gradients[idx*numpredictors+k] += 2 * (pred[pred_start_index+i-start] - y[i]) * (k * weights[k] * pow(X[i * numpredictors + k], k - 1));
+                w_gradients[idx*numpredictors+k] += -2 * (y[i] - pred[i]) *  pow(X[i * numpredictors + k], k);
             
             }
-            b_gradient += 2 * (pred[pred_start_index+i-start] - y[i]);
+            b_gradient += -2 * (y[i] - pred[i]);
         }
+
+        loss_arr[epoch] += loss;
     }
     
 }
@@ -255,18 +261,21 @@ int main(int argc, char * argv[])
     double *y = train_y_csv();
     // shuffleXY(X,y,train_size,numpredictors)
 
-   double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
-    memset(weights, 0, numpredictors);
+    double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
+    double *loss = (double *)malloc(sizeof(double) * num_epochs);
+    std::fill_n(weights, 0, numpredictors);
 
-    double *weights_d, *w_gradients_d, *pred_d, *X_d, *y_d ;
+    double *weights_d, *w_gradients_d, *pred_d, *X_d, *y_d, *loss_d ;
 
     size_t wg_size = size_t(total_threads*numpredictors) * sizeof(double);
     size_t pred_size = size_t(total_threads*batch_size) * sizeof(double);
 
-    checkCuda(cudaMalloc((void**)&w_gradients_d, wg_size));
-    checkCuda(cudaMemset(w_gradients_d, 0, wg_size));
+    checkCuda(cudaMalloc((void**)&w_gradients_d, wg_size));   
     checkCuda(cudaMalloc((void**)&pred_d, pred_size));
-    // checkCuda(cudaMemset(pred_d, 0, pred_size));
+    checkCuda(cudaMalloc((void**)&loss_d, num_epochs));
+    checkCuda(cudaMemset(w_gradients_d, 0, wg_size));
+    checkCuda(cudaMemset(pred_d, 0, pred_size));
+    checkCuda(cudaMemset(loss_d, 0, num_epochs));
 
     checkCuda(cudaMalloc((void**)&weights_d, (numpredictors+1)*sizeof(double)));
     checkCuda(cudaMalloc((void**)&X_d, train_size*(numpredictors)*sizeof(double)));
@@ -280,8 +289,12 @@ int main(int argc, char * argv[])
 
     printf("GPU: %d blocks of %d threads each\n", numblocks, threadsperblock); 
 
-    hogwild_kernel<<<numblocks , threadsperblock>>>(num_epochs, train_size, numpredictors, batch_size, learning_rate, X_d, y_d, weights_d, w_gradients_d, pred_d);
+    hogwild_kernel<<<numblocks , threadsperblock>>>(num_epochs, train_size, numpredictors, batch_size, learning_rate, X_d, y_d, weights_d, w_gradients_d, pred_d, loss_d);
+    checkCuda(cudaMemcpyAsync(loss, loss_d, num_epochs, cudaMemcpyDeviceToHost));
 
+    for(int i=0; i<num_epochs; i++){
+        printf("Epoch: %d Average loss: %f\n", i+1, loss[i] / ((train_size) / batch_size));
+    }
 
     free(weights);
     //free(pred);

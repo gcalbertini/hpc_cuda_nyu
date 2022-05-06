@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
     double *y = (double *)malloc(sizeof(double)*train_size);
     train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
+
     /// Assume the above is implemented
 
     /// todo: initialize random weights and gradients
