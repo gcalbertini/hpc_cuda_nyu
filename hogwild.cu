@@ -210,7 +210,7 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
         {
             for (long k = 1; k <= numpredictors; k++)
             {
-                w_gradients[idx*numpredictors+k] += -2 * (y[i] - pred[i]) *  pow(X[i * numpredictors + k], k);
+                w_gradients[idx*numpredictors+(k-1)] += -2 * (y[i] - pred[i]) *  pow(X[i * numpredictors + (k-1)], k);
             
             }
             b_gradient += -2 * (y[i] - pred[i]);
