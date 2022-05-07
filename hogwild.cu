@@ -130,18 +130,7 @@ void hogwild_kernel(int num_epochs, int train_size, long numpredictors, int batc
         for (long i = start; i < start + batch_size; i++)
         {
             if (i < train_size) 
-            {
-                weights[0] = weights[0] - (b_gradient / batch_size) * learning_rate;
-                for (long k = 0; k < numpredictors; k++)
-                {
-                    weights[k + 1] = weights[k + 1] - (w_gradients[idx*numpredictors+k] / batch_size) * learning_rate;
-                    
-                }
-                
-                // update prediction using the new weights
-                // y = a + b*(x_0) + c*(x_1)^2 + d*(x_2)^3 + ....
-                // a, b, c, d ... are weights, x_0, x_1, x_2 are predictor_values
-                    
+            {              
                 double pred_reduction_sum = weights[0];
                 for (long j = 0; j < numpredictors; j++)
                 {
@@ -151,25 +140,27 @@ void hogwild_kernel(int num_epochs, int train_size, long numpredictors, int batc
                 pred[i] = pred_reduction_sum;
                 b_gradient = 0;
                 loss += pow(pred_reduction_sum - y[i], 2);
-            }
-                
-        }
 
-        loss_arr[idx*epoch+epoch] = loss;
-
-            
-        for (long i = start; i < start + batch_size; i++)
-        {   
-            if (i < train_size) 
-            {
                 for (long k = 1; k <= numpredictors; k++)
                 {
                     w_gradients[idx*numpredictors+(k-1)] += -2 * (y[i] - pred[i]) *  pow(X[i * numpredictors + (k-1)], k);
                 
                 }
                 b_gradient += -2 * (y[i] - pred[i]);
+
+                weights[0] = weights[0] - (b_gradient / batch_size) * learning_rate;
+                for (long k = 0; k < numpredictors; k++)
+                {
+                    weights[k + 1] = weights[k + 1] - (w_gradients[idx*numpredictors+k] / batch_size) * learning_rate;
+                    
+                }
             }
+                
         }
+        
+        learning_rate = learning_rate / 2;
+
+        loss_arr[idx*epoch+epoch] = loss;
     }
     
 }
