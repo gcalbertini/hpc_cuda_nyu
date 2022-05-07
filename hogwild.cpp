@@ -175,7 +175,6 @@ int main(int argc, char *argv[])
     long train_size;
     int num_epochs;
     double learning_rate = 0.05;
-
     if (argc != 5)
     {
         fprintf(stderr, "usage: hogwild train_size numpredictors batch_size num_epochs\n");

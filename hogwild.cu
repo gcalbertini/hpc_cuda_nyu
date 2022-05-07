@@ -64,7 +64,7 @@ double *train_x_csv()
     long nrows = 0;
     long ncols = 0;
 
-    f.open("generated_data/df_X.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -141,7 +141,7 @@ double *train_y_csv()
     }
     f.close();
 
-    f.open("generated_data/df_y.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
