@@ -61,7 +61,7 @@ void calc_gradient(double *train_x, double *train_y, int batch_size, long numpre
     {
         for (long k = 1; k <= numpredictors; k++)
         {
-            w_gradients[k-1] += difflinear(weights, train_x[b * numpredictors + (k-1)], k, pred[b], train_y[b]);
+            w_gradients[k - 1] += difflinear(weights, train_x[b * numpredictors + (k - 1)], k, pred[b], train_y[b]);
         }
         b_gradient[0] += difflinear(weights, train_x[0], 0, pred[b], train_y[b]);
     }
@@ -107,13 +107,12 @@ void update_weights(double *weights, double *w_gradients, double *b_gradient, in
     }
 }
 
-
-void train_x_csv(double * X, long nrows, long ncols)
+void train_x_csv(double *X, long nrows, long ncols)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     std::stringstream lineStream;
-  
+
     f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
@@ -138,12 +137,12 @@ void train_x_csv(double * X, long nrows, long ncols)
     f.close();
 }
 
-void train_y_csv(double * y, long nrows)
+void train_y_csv(double *y, long nrows)
 {
     std::ifstream f;
     std::string line; /* string for line & value */
     std::stringstream lineStream;
-   
+
     f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
@@ -174,7 +173,8 @@ int main(int argc, char *argv[])
     int batch_size;
     long train_size;
     int num_epochs;
-    double learning_rate = 0.05;
+    double learning_rate = 0.75;
+
     if (argc != 5)
     {
         fprintf(stderr, "usage: hogwild train_size numpredictors batch_size num_epochs\n");
@@ -190,9 +190,8 @@ int main(int argc, char *argv[])
     batch_size = atoi(argv[3]);
     num_epochs = atoi(argv[4]);
 
-    
-    double *X = (double *)malloc(sizeof(double)*numpredictors*train_size);
-    double *y = (double *)malloc(sizeof(double)*train_size);
+    double *X = (double *)malloc(sizeof(double) * numpredictors * train_size);
+    double *y = (double *)malloc(sizeof(double) * train_size);
     train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
 
@@ -216,31 +215,44 @@ int main(int argc, char *argv[])
     long start = 0;
     double loss_sum = 0;
 
-    for (int epoch = 0; epoch < num_epochs; epoch++)
+    std::string filename("hogwild_serial_results.csv");
+    std::fstream file;
+    Timer t;
+    t.tic();
+
+    file.open(filename, std::ios_base::app | std::ios_base::in);
+    if (file.is_open())
     {
-        loss_sum = 0;
-        for (long i = 0; i < train_size; i++)
+        for (int epoch = 0; epoch < num_epochs; epoch++)
         {
-            for (long j = 0; j < numpredictors; j++)
+            loss_sum = 0;
+            for (long i = 0; i < train_size; i++)
             {
-                train_batch_x[start * numpredictors + j] = X[i * numpredictors + j];
+                for (long j = 0; j < numpredictors; j++)
+                {
+                    train_batch_x[start * numpredictors + j] = X[i * numpredictors + j];
+                }
+                train_batch_y[start] = y[i];
+                start++;
+                if ((i + 1) % batch_size == 0)
+                {
+                    // memset(w_gradients, 0, numpredictors);
+                    std::fill_n(w_gradients, numpredictors, 0.0);
+                    b_gradient[0] = 0;
+                    double loss = calc_pred(epoch + 1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
+                    calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
+                    update_weights(weights, w_gradients, b_gradient, batch_size, numpredictors, learning_rate);
+                    start = 0;
+                    loss_sum += loss;
+                }
             }
-            train_batch_y[start] = y[i];
-            start++;
-            if ((i + 1) % batch_size == 0)
-            {
-                //memset(w_gradients, 0, numpredictors);
-                std::fill_n(w_gradients, numpredictors, 0.0);
-                b_gradient[0] = 0;
-                double loss = calc_pred(epoch + 1, train_batch_x, train_batch_y, weights, batch_size, w_gradients, b_gradient, numpredictors, learning_rate, pred);
-                calc_gradient(train_batch_x, train_batch_y, batch_size, numpredictors, weights, pred, w_gradients, b_gradient);
-                update_weights(weights, w_gradients, b_gradient, batch_size, numpredictors, learning_rate);
-                start = 0;
-                loss_sum += loss;
-            }
+            printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / ((train_size) / batch_size));
+            learning_rate = learning_rate / 2;
+            file << epoch << "," << loss_sum / ((train_size) / batch_size) << "," << std::endl;
         }
-        printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / ((train_size) / batch_size));
-        learning_rate = learning_rate / 2;
+        double time = t.toc();
+        file << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;
+        std::cout << "Time: " << time << std::endl;
     }
 
     free(train_batch_x);
