@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     int batch_size;
     long train_size;
     int num_epochs;
-    double learning_rate = 0.75;
+    double learning_rate = 0.05;
 
     if (argc != 5)
     {
@@ -253,6 +253,10 @@ int main(int argc, char *argv[])
         double time = t.toc();
         file << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;
         std::cout << "Time: " << time << std::endl;
+    }
+
+    for (int i = 0; i < numpredictors+1; ++i){
+        file << weights[i] << ","; 
     }
 
     free(train_batch_x);

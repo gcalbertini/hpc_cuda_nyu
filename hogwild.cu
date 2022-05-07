@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
+    cudaEventRecord(start);
     checkCuda(cudaMalloc((void **)&w_gradients_d, wg_size));
     checkCuda(cudaMalloc((void **)&pred_d, pred_size));
     checkCuda(cudaMalloc((void **)&loss_d, loss_size));
@@ -246,6 +247,7 @@ int main(int argc, char *argv[])
 
     hogwild_kernel<<<numblocks, threadsperblock>>>(num_epochs, train_size, numpredictors, batch_size, learning_rate, X_d, y_d, weights_d, w_gradients_d, pred_d, loss_d);
     checkCuda(cudaMemcpyAsync(loss, loss_d, loss_size, cudaMemcpyDeviceToHost));
+    checkCuda(cudaMemcpyAsync(weights, weights_d, (numpredictors + 1) * sizeof(double), cudaMemcpyDeviceToHost));
     checkCuda(cudaDeviceSynchronize());
 
     for (int i = 0; i < num_epochs; i++)
@@ -257,8 +259,15 @@ int main(int argc, char *argv[])
             cur_loss += loss[j * num_epochs + i];
         }
         printf("Epoch: %d Average loss: %f\n", i + 1, cur_loss / total_threads);
-        fout << i << "," << cur_loss/total_threads << "," << std::endl;
+        fout << i << "," << cur_loss / total_threads << "," << std::endl;
     }
+
+    for (int i = 0; i < numpredictors + 1; ++i)
+    {
+        fout << weights[i] << ",";
+    }
+
+    fout << std::endl;
 
     cudaEventRecord(stop);
 
