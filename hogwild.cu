@@ -126,7 +126,6 @@ void hogwild_kernel(int num_epochs, long train_size, long numpredictors, int bat
     for (int epoch = 0; epoch < num_epochs; epoch++)
     {
         long start = batch_size*idx;
-        long pred_start_index = idx*batch_size;
         loss = 0;
         for (long i = start; i < start + batch_size; i++)
         {
@@ -206,8 +205,10 @@ int main(int argc, char * argv[])
       	numblocks = (total_threads/threadsperblock)>0? (total_threads/threadsperblock)+1:1 ;
 
     //X, y comes from csv function now? Both now should be C array
-    double *X = train_x_csv();
-    double *y = train_y_csv();
+    double *X = (double *)malloc(sizeof(double) * numpredictors * train_size);
+    double *y = (double *)malloc(sizeof(double) * train_size);
+    train_x_csv(X, train_size, numpredictors);
+    train_y_csv(y, train_size);
     // shuffleXY(X,y,train_size,numpredictors)
 
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
