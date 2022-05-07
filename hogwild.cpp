@@ -113,7 +113,7 @@ void train_x_csv(double *X, long nrows, long ncols)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -143,7 +143,7 @@ void train_y_csv(double *y, long nrows)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -194,6 +194,8 @@ int main(int argc, char *argv[])
     double *y = (double *)malloc(sizeof(double) * train_size);
     train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
+
+    shuffleXY(X, y, train_size, numpredictors);
 
     /// Assume the above is implemented
 
@@ -246,9 +248,9 @@ int main(int argc, char *argv[])
                     loss_sum += loss;
                 }
             }
-            printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / ((train_size) / batch_size));
+            printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / train_size);
             learning_rate = learning_rate / 2;
-            file << epoch << "," << loss_sum / ((train_size) / batch_size) << "," << std::endl;
+            file << epoch << "," << loss_sum / train_size << "," << std::endl;
         }
         double time = t.toc();
         file << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;

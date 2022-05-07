@@ -63,7 +63,7 @@ void train_x_csv(double *X, long nrows, long ncols)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_X_train.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -93,7 +93,7 @@ void train_y_csv(double *y, long nrows)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_y_train.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -258,8 +258,8 @@ int main(int argc, char *argv[])
         {
             cur_loss += loss[j * num_epochs + i];
         }
-        printf("Epoch: %d Average loss: %f\n", i + 1, cur_loss / total_threads);
-        fout << i << "," << cur_loss / total_threads << "," << std::endl;
+        printf("Epoch: %d Average loss: %f\n", i + 1, cur_loss / train_size);
+        fout << i << "," << cur_loss / train_size << "," << std::endl;
     }
 
     for (int i = 0; i < numpredictors + 1; ++i)
