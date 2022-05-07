@@ -113,7 +113,7 @@ void train_x_csv(double *X, long nrows, long ncols)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_X_train_50k.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train_100k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -143,7 +143,7 @@ void train_y_csv(double *y, long nrows)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_y_train_50k.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train_100k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -255,11 +255,11 @@ int main(int argc, char *argv[])
         fout << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;
         fout << "Time: " << time << std::endl;
     }
-    printf("111");
+
     for (int i = 0; i < numpredictors+1; ++i){
         fout << weights[i] << ","; 
     }
-    printf("222");
+  
 
     free(train_batch_x);
     free(train_batch_y);
