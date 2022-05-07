@@ -217,18 +217,17 @@ int main(int argc, char *argv[])
     long start = 0;
     double loss_sum = 0;
 
-    std::string filename("hogwild_serial_results.csv");
-    std::fstream file;
     Timer t;
     t.tic();
 
-    file.open(filename, std::ios_base::app | std::ios_base::in);
-    if (file.is_open())
+    std::fstream fout;
+    fout.open("hogwild_serial_results.csv", std::ios::out | std::ios::app);
+    if (fout.is_open())
     {
         for (int epoch = 0; epoch < num_epochs; epoch++)
         {
             loss_sum = 0;
-            for (long i = 0; i < train_size; i++)
+            for (long i = 0; i < train_size - (train_size%batch_size); i++)
             {
                 for (long j = 0; j < numpredictors; j++)
                 {
@@ -250,16 +249,17 @@ int main(int argc, char *argv[])
             }
             printf("Epoch: %d Average loss: %f\n", epoch, loss_sum / train_size);
             learning_rate = learning_rate / 2;
-            file << epoch << "," << loss_sum / train_size << "," << std::endl;
+            fout << epoch << "," << loss_sum / train_size << "," << std::endl;
         }
         double time = t.toc();
-        file << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;
-        std::cout << "Time: " << time << std::endl;
+        fout << train_size << "," << numpredictors<< "," << batch_size << "," << learning_rate << "," << time << std::endl;
+        fout << "Time: " << time << std::endl;
     }
-
+    printf("111");
     for (int i = 0; i < numpredictors+1; ++i){
-        file << weights[i] << ","; 
+        fout << weights[i] << ","; 
     }
+    printf("222");
 
     free(train_batch_x);
     free(train_batch_y);
