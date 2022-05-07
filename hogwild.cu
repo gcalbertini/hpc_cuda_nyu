@@ -13,7 +13,7 @@
 #include <cuda.h>
 #include <assert.h>
 
-#define threadsperblock 1000
+#define threadsperblock 500
 
 // Convenience function for checking CUDA runtime API results
 // can be wrapped around any runtime API call. No-op in release builds.
@@ -205,7 +205,8 @@ int main(int argc, char * argv[])
     double *y = (double *)malloc(sizeof(double) * train_size);
     train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
-    // shuffleXY(X,y,train_size,numpredictors)
+
+    shuffleXY(X,y,train_size,numpredictors);
 
     double *weights = (double *)malloc(sizeof(double) * (numpredictors + 1));
     double *loss = (double *)malloc(sizeof(double) * num_epochs*total_threads);
