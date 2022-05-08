@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
 
-    fout << train_size << "," << numpredictors << "," << batch_size << "," << learning_rate << "," << time << std::endl;
+    fout << train_size << "," << numpredictors << "," << batch_size << "," << learning_rate << "," << milliseconds / 1000. << std::endl;
     std::cout << "Time: " << milliseconds / 1000. << std::endl;
     return 0;
 }
