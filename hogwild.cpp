@@ -113,7 +113,7 @@ void train_x_csv(double *X, long nrows, long ncols)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_X_train_100k.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_X_train_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -143,7 +143,67 @@ void train_y_csv(double *y, long nrows)
     std::string line; /* string for line & value */
     std::stringstream lineStream;
 
-    f.open("generated_data/df_y_train_100k.csv"); /* open file with filename as argument */
+    f.open("generated_data/df_y_train_50k.csv"); /* open file with filename as argument */
+    if (!f.is_open())
+    { /* validate file open for reading */
+        std::cerr << "error: file open failed!\n";
+    }
+
+    long idx = 0;
+    // read lines
+    while (std::getline(f, line))
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        // std::cout << "row=" << row++
+        //   << " lineStream.str() = " << lineStream.str() << std::endl;
+        while (std::getline(lineStream, line, ','))
+        {
+            // std::cout << "element=" << line << std::endl;
+            y[idx] = atof(line.c_str());
+            idx++;
+        }
+    }
+    f.close();
+}
+
+void test_x_csv(double *X, long nrows, long ncols)
+{
+    std::ifstream f;
+    std::string line; /* string for line & value */
+    std::stringstream lineStream;
+
+    f.open("generated_data/df_X_test_50k.csv"); /* open file with filename as argument */
+    if (!f.is_open())
+    { /* validate file open for reading */
+        std::cerr << "error: file open failed!\n";
+    }
+
+    long idx = 0;
+    // read lines
+    while (std::getline(f, line))
+    {
+        lineStream.clear();
+        lineStream.str(line);
+        // std::cout << "row=" << row++
+        //   << " lineStream.str() = " << lineStream.str() << std::endl;
+        while (std::getline(lineStream, line, ','))
+        {
+            // std::cout << "element=" << line << std::endl;
+            X[idx] = atof(line.c_str());
+            idx++;
+        }
+    }
+    f.close();
+}
+
+void test_y_csv(double *y, long nrows)
+{
+    std::ifstream f;
+    std::string line; /* string for line & value */
+    std::stringstream lineStream;
+
+    f.open("generated_data/df_y_test_50k.csv"); /* open file with filename as argument */
     if (!f.is_open())
     { /* validate file open for reading */
         std::cerr << "error: file open failed!\n";
@@ -194,6 +254,11 @@ int main(int argc, char *argv[])
     double *y = (double *)malloc(sizeof(double) * train_size);
     train_x_csv(X, train_size, numpredictors);
     train_y_csv(y, train_size);
+
+    double *X_test = (double *)malloc(sizeof(double) * numpredictors * train_size);
+    double *y_test = (double *)malloc(sizeof(double) * train_size);
+    test_x_csv(X_test, train_size, numpredictors);
+    test_y_csv(y_test, train_size);
 
     shuffleXY(X, y, train_size, numpredictors);
 
@@ -259,6 +324,18 @@ int main(int argc, char *argv[])
     for (int i = 0; i < numpredictors+1; ++i){
         fout << weights[i] << ","; 
     }
+
+    double total_test_error = 0;
+    for (long i = 0; i < train_size; i++)
+    {
+        double pred_reduction_sum = weights[0];
+        for (long j = 0; j < numpredictors; j++)
+        {
+            pred_reduction_sum += weights[j + 1] * pow(X_test[i * numpredictors + j], j + 1);
+        }
+        total_test_error += pow(pred_reduction_sum - y_test[i], 2);
+    }
+    std::cout << "Average Test Error: " << total_test_error / train_size << std::endl;
   
 
     free(train_batch_x);
